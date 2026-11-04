@@ -1,0 +1,73 @@
+syntax = "proto3";
+package nfc.smartcard.v1;
+
+// Frame cifrato trasportato su /v1/mobile (payload = AES-256-GCM di PlainFrame).
+message EncryptedFrame {
+  uint64 seq = 1;        // contatore monotono anti-replay
+  bytes nonce12 = 2;     // 12 byte GCM nonce (4 byte fissi + 8 byte seq BE)
+  bytes ciphertext = 3;  // PlainFrame serializzato + tag GCM 16B
+}
+
+// Contenuto in chiaro (solo dopo decifratura).
+message PlainFrame {
+  oneof kind {
+    HandshakeInit handshake_init = 1;
+    HandshakeResp handshake_resp = 2;
+    ApduRequest apdu_request = 3;
+    ApduResponse apdu_response = 4;
+    CardEvent card_event = 5;
+    Ping ping = 6;
+    Pong pong = 7;
+    ErrorFrame error = 8;
+  }
+}
+
+message HandshakeInit {
+  bytes eph_pubkey = 1;  // 32B X25519 effimera mobile
+  bytes nonce32 = 2;     // echo del nonce QR per binding sessione
+  bytes mlkem_ct = 3;    // 1088B ML-KEM-768 ct (vuoto = handshake classico v1)
+  uint32 proto_v = 4;    // 1 = classico, 2 = ibrido PQ (negoziazione 2026)
+  // Versione del materiale chiavi (KDF). Assente = 1 = chiave unica per entrambe
+  // le direzioni, che e' rifiutata: con un nonce funzione solo di `seq` e due
+  // contatori che partono da 1, ogni seq veniva usato due volte sotto la stessa
+  // chiave. Il campo viaggia in chiaro come il resto dell'init, quindi un
+  // attaccante puo' rimuoverlo: in quel caso l'engine rifiuta e il canale non si
+  // apre mai. E' una scelta deliberata rispetto a negoziare all'indietro, dove
+  // la stessa rimozione avrebbe prodotto un downgrade silenzioso.
+  uint32 keys_v = 5;
+}
+
+message HandshakeResp {
+  bytes eph_pubkey = 1;  // 32B X25519 effimera desktop
+  uint32 proto_v = 2;    // versione effettiva negoziata (eco)
+}
+
+message ApduRequest {
+  string request_id = 1;
+  bytes apdu = 2;        // byte APDU ISO7816 grezzi (max 65535)
+  uint32 timeout_ms = 3;
+}
+
+message ApduResponse {
+  string request_id = 1;
+  bytes data = 2;        // dati risposta senza SW
+  uint32 sw1 = 3;
+  uint32 sw2 = 4;
+  uint64 latency_ms = 5;
+}
+
+message CardEvent {
+  enum Kind {
+    UNKNOWN = 0;
+    INSERTED = 1;
+    REMOVED = 2;
+    READING = 3;
+  }
+  Kind kind = 1;
+  string atr_hex = 2;    // ATR esadecimale se noto (Android IsoDep: historical bytes)
+  int64 ts_ms = 3;
+}
+
+message Ping { uint64 seq = 1; int64 t_ms = 2; }
+message Pong { uint64 seq = 1; int64 t_ms = 2; }
+message ErrorFrame { int32 code = 1; string message = 2; }

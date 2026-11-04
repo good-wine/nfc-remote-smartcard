@@ -1,0 +1,269 @@
+/* UI desktop (webview Tauri): stessi token della webapp, finestra compatta. */
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0d12;
+  --card: #151923;
+  --line: #262c3a;
+  --fg: #e8ecf4;
+  --muted: #98a2b8;
+  --accent: #4c8dff;
+  --ok: #35c68a;
+  --warn: #ffb020;
+  --err: #ff5c5c;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 14px;
+  max-width: 720px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.card h2,
+.card h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+
+.card-head h2,
+.card-head h3 {
+  margin: 0;
+}
+
+.card h4 {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+
+.meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0;
+}
+
+/* Il QR ibrido PQ è denso (fino a ~177 moduli): a 320px i moduli scendono
+ * sotto 1.8px sullo schermo e la fotocamera del telefono non li risolve.
+ * Mostrato grande (>= 540px) l'inquadratura da ~15-20cm riempie il frame. */
+#qr {
+  display: block;
+  width: min(540px, 100%);
+  background: #fff;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+#qrtext {
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--muted);
+}
+
+#sas {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 24px;
+  letter-spacing: 6px;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 8px 0 0;
+}
+
+#status {
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #0e111a;
+  word-break: break-word;
+}
+
+#status-meta[hidden] {
+  display: none;
+}
+
+#log {
+  font-size: 12px;
+  max-height: 180px;
+  overflow: auto;
+  background: #0e111a;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 8px;
+}
+
+#log div {
+  padding: 1px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+
+#log div:last-child {
+  border-bottom: 0;
+}
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+button {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #1b2130;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: #3a445c;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button.ghost {
+  background: transparent;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04122e;
+  font-weight: 600;
+}
+
+/* Consensi e clienti */
+
+.count-badge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-align: center;
+  color: #04122e;
+  background: var(--accent);
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.count-badge[hidden] {
+  display: none;
+}
+
+/* Validità residua del QR di pairing, con rigenerazione automatica alla scadenza */
+
+.qr-expiry {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.qr-expiry[hidden] {
+  display: none;
+}
+
+.qr-expiry[data-state="expiring"] {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+}
+
+.qr-expiry[data-state="expired"] {
+  color: var(--err);
+  border-color: color-mix(in srgb, var(--err) 45%, transparent);
+  background: color-mix(in srgb, var(--err) 8%, transparent);
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: #0e111a;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.row-label {
+  font-size: 13px;
+  word-break: break-word;
+}
+
+button.btn-approve {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #03251a;
+  font-weight: 600;
+  padding: 5px 10px;
+}
+
+button.btn-reject {
+  background: var(--err);
+  border-color: var(--err);
+  color: #2a0505;
+  font-weight: 600;
+  padding: 5px 10px;
+}
+
+button.btn-revoke {
+  background: transparent;
+  color: var(--err);
+  border-color: color-mix(in srgb, var(--err) 45%, transparent);
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.empty {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}

@@ -1,0 +1,8 @@
+<res version="1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Destinazione: mobile/src-tauri/gen/android/app/src/main/res/xml/nfc_tech_filter.xml
+       (vedi mobile/gen/README.md). -->
+  <tech-list>
+    <tech>android.nfc.tech.IsoDep</tech>
+    <tech>android.nfc.tech.NfcA</tech>
+  </tech-list>
+</res>

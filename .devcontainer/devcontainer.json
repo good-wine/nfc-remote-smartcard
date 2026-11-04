@@ -1,0 +1,10 @@
+{
+  "name": "nfc-remote",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-bullseye",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/protobuf:1": {}
+  },
+  "postCreateCommand": "rustup component add clippy rustfmt && (cd browser-extension && npm install || true)",
+  "customizations": { "vscode": { "extensions": ["rust-lang.rust-analyzer", "tauri-apps.tauri-vscode"] } }
+}

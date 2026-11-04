@@ -1,0 +1,65 @@
+# CODEOWNERS — ownership per area del monorepo NFC Remote.
+#
+# L'organizzazione reale è `nfc-remote` (vedi gli URL in
+# `.github/ISSUE_TEMPLATE/config.yml`), quindi l'owner è il team
+# `@nfc-remote/maintainers`.
+#
+# Perché GitHub richieda la review automatica, quel team deve esistere
+# nell'organizzazione con accesso in scrittura al repository. Se il team ha un
+# nome diverso, sostituisci ogni occorrenza di `@nfc-remote/maintainers` con
+# `@<org>/<team>` (o con singoli handle utente):
+#   grep -rl '@nfc-remote/maintainers' .github | xargs sed -i 's#@nfc-remote/maintainers#@ORG/TEAM#g'
+#
+# Sintassi: l'ultimo pattern che matcha vince, quindi le regole più specifiche
+# stanno in fondo.
+# Documentazione: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: ogni file non coperto esplicitamente va ai maintainer.
+* @nfc-remote/maintainers
+
+# --- Core: crittografia, protocollo, pairing, trasporto -----------------------
+# Modifiche qui toccano l'E2EE e i guard di sicurezza: review obbligatoria.
+/shared-core-rust/            @nfc-remote/maintainers
+
+# Core WASM: validazione QR/APDU nel browser. La webapp non deve rifare i check
+# in JavaScript: è una regressione già coperta dal guard.
+/shared-core-wasm/            @nfc-remote/maintainers
+
+# --- Piattaforme --------------------------------------------------------------
+# Desktop: engine, tray, server WS/HTTPS, vpcd adapter, PKI locale.
+/desktop/                     @nfc-remote/maintainers
+
+# Mobile: client E2EE + bridge nativi NFC.
+/mobile/                      @nfc-remote/maintainers
+
+# Web: webapp/PWA WASM-first (client inline, non importa shared-ui-ts).
+/web/                         @nfc-remote/maintainers
+
+# Estensione: MV3, flusso token/consenso, `requireHttps`.
+/browser-extension/           @nfc-remote/maintainers
+
+# UI/tipi condivisi (consumati per path relativo dal mobile).
+/shared-ui-ts/                @nfc-remote/maintainers
+
+# Bridge nativi del mobile (Kotlin/Swift): area ad alto rischio, trattata come
+# sorgente e mai rigenerata.
+/mobile/gen/                  @nfc-remote/maintainers
+
+# Guard e contratti cross-crate scritti a mano: nessun compilatore li protegge.
+/scripts/                     @nfc-remote/maintainers
+
+# --- CI, release e supply-chain ----------------------------------------------
+/.github/                     @nfc-remote/maintainers
+
+# Manifest e lock: una modifica qui cambia la supply-chain di tutto il workspace.
+/Cargo.toml                   @nfc-remote/maintainers
+/Cargo.lock                   @nfc-remote/maintainers
+/deny.toml                    @nfc-remote/maintainers
+/rust-toolchain.toml          @nfc-remote/maintainers
+
+# --- Documentazione e governance ---------------------------------------------
+/SECURITY.md                  @nfc-remote/maintainers
+/CONTRIBUTING.md              @nfc-remote/maintainers
+/README.md                    @nfc-remote/maintainers
+/AGENTS.md                    @nfc-remote/maintainers
+/docs/                        @nfc-remote/maintainers

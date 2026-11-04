@@ -1,0 +1,26 @@
+{
+  "_note": "Frammento mobile: fondere con tauri.conf.json per build mobile. `tauri android|ios init` genera il progetto nativo; qui permessi e plugin richiesti.",
+  "identifier": "it.nfcremote.mobile",
+  "mobile": {
+    "android": {
+      "permissions": ["NFC", "CAMERA", "INTERNET", "ACCESS_WIFI_STATE", "CHANGE_WIFI_MULTICAST_STATE"],
+      "intentFilters": [
+        {
+          "actions": ["android.nfc.action.TECH_DISCOVERED"],
+          "categories": ["android.intent.category.DEFAULT"]
+        }
+      ]
+    },
+    "ios": {
+      "entitlements": {
+        "com.apple.developer.nfc.readersession.formats": ["TAG"],
+        "com.apple.developer.nfc.readersession.iso7816.select-identifiers": ["A0000002471001", "A0000002472001", "A00000045645444", "3B8F8001804F0CA000000306030001000000006A"]
+      },
+      "backgroundModes": ["external-accessory"],
+      "privacyUsage": {
+        "NSNFCReaderUsageDescription": "Legge CIE/CNS via NFC per firma e login sul PC associato.",
+        "NSCameraUsageDescription": "Scansiona il QR di accoppiamento col PC."
+      }
+    }
+  }
+}

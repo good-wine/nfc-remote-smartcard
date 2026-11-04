@@ -1,0 +1,14 @@
+{
+  "name": "nfc-extension",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/bundle.mjs",
+    "dev": "tsc -p tsconfig.json --watch",
+    "zip": "npm run build && node scripts/zip.mjs",
+    "lint": "npx tsc -p tsconfig.json --noEmit",
+    "test:e2e": "npx playwright test"
+  },
+  "devDependencies": { "typescript": "^5.9.0", "@types/chrome": "^0.1.0", "@playwright/test": "^1.49.0" }
+}

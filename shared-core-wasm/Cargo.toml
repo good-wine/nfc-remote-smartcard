@@ -1,0 +1,29 @@
+[package]
+name = "nfc-core-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shim WASM verso nfc-core per la webapp mobile (nessuna logica crittografica propria)"
+publish = false
+
+# Conserva i lint della workspace: serve a verificare che l'espansione di
+# `wasm-bindgen` non introduca `unsafe` nel nostro codice. Se lo facesse,
+# questo `[lints] workspace = true` produrrebbe un errore di compilazione.
+[lints]
+workspace = true
+
+[lib]
+name = "nfc_core_wasm"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# `default-features = false`: esclude `net` (mDNS + enumerazione interfacce),
+# che non ha alcun senso nel browser e non compila su wasm32.
+nfc-core = { version = "0.3.0", path = "../shared-core-rust", default-features = false, features = ["pq"] }
+wasm-bindgen = "0.2"
+hex = "0.4"
+serde_json = "1"
+# Backend CSPRNG per wasm32-unknown-unknown: senza, `getrandom` non compila.
+# I due major coesistono perché `nfc-core` punta a 0.3 e `ml-kem` a 0.4.
+getrandom = { version = "0.3", features = ["wasm_js"] }
+getrandom04 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }

@@ -1,0 +1,30 @@
+[workspace]
+members = [
+  "shared-core-rust",
+  "desktop/src-tauri",
+  "mobile/src-tauri",
+  "shared-core-wasm",
+]
+exclude = ["fuzz"]
+resolver = "2"
+
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+authors = ["NFC Remote Team"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "allow", priority = -1 }
+
+# Profilo release ottimizzato per binari desktop/mobile (2026: LTO + strip + panic abort su mobile)
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

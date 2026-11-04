@@ -1,0 +1,63 @@
+[package]
+name = "nfc-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core Rust condiviso: crypto ibrida X25519+ML-KEM/HKDF/AES-GCM, protocollo APDU, pairing QRv2, mDNS, transport"
+[lints]
+workspace = true
+
+[lib]
+name = "nfc_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Solo dipendenze usate davvero dal lib (chiusura minima = download rapidi).
+# Chiusura minima: `nfc-core` usa solo `spawn`, `sync` e le macro di test.
+# `features = ["full"]` traeva `net` -> `mio`, che **non compila** su
+# wasm32-unknown-unknown: un library crate non deve imporre un runtime di rete
+# a chi lo consuma. Il desktop/mobile dichiarano `full` in proprio.
+tokio = { version = "1.47", features = ["rt", "sync", "macros"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+prost = "0.14"
+# Crypto zero-trust 2026: classica + ibrida post-quantum (NIST FIPS 203 ML-KEM-768).
+# ML-KEM è opzionale (feature `pq`) per build leggere senza PQC.
+x25519-dalek = { version = "2.0", features = ["static_secrets"] }
+ml-kem = { version = "0.3", features = ["getrandom"], optional = true }
+hkdf = "0.12"
+sha2 = "0.10"
+# `default-features = false`: la feature `getrandom` di aes-gcm trae `rand_core` +
+# `getrandom 0.2`, che **non compila** su `wasm32-unknown-unknown` senza
+# wasm-bindgen. Qui non serve: `SessionKeys` usa chiavi statiche (`Key::from_slice`)
+# e mai `Aes256Gcm::generate_key`. La feature è quindi un costo su ogni target.
+aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc", "std"] }
+chacha20poly1305 = { version = "0.10", optional = true }
+base64 = "0.22"
+hex = "0.4"
+getrandom = "0.3"
+# Opzionali: vedi `[features] net` sotto — non compilano su wasm32.
+mdns-sd = { version = "0.14", optional = true }
+thiserror = "2.0"
+anyhow = "1.0"
+zeroize = { version = "1.8", features = ["zeroize_derive"] }
+local-ip-address = { version = "0.6", optional = true }
+# File locking per engine lockfile (cross-platform flock)
+fs2 = { version = "0.4", optional = true }
+
+[features]
+default = ["net"]
+# Rete di sistema (multicast mDNS + enumerazione interfacce per il QR).
+# Serve solo all'engine desktop: il mobile non la usa e la webapp non può.
+net = ["dep:mdns-sd", "dep:local-ip-address"]
+# File locking per engine lockfile (cross-platform flock) - solo per desktop
+lockfile = ["dep:fs2"]
+# Abilita handshake ibrido X25519+ML-KEM-768 (consigliato 2026 per harvest-now-decrypt-later).
+pq = ["dep:ml-kem"]
+aead-chacha = ["dep:chacha20poly1305"]
+
+[dev-dependencies]
+tokio = { version = "1.47", features = ["full", "test-util"] }
+
+[build-dependencies]
+prost-build = "0.14"

@@ -1,0 +1,70 @@
+# Configurazione git-cliff per NFC Remote Smartcard.
+# Sintassi valida per git-cliff v2 (testata con 2.14.x).
+# Il changelog è derivato dai Conventional Commits: i titoli dei gruppi sono in
+# italiano, i tipi/scope/valori tecnici restano in inglese. Usato dalla pipeline
+# di release (.github/workflows/release.yml) con `--latest --strip header`.
+
+[changelog]
+# Intestazione del file di changelog (esclusa dal corpo del singolo release
+# grazie a `--strip header`).
+header = """
+# Changelog — NFC Remote Smartcard
+
+Tutte le modifiche rilevanti a questo progetto sono documentate in questo file.
+
+Il formato segue [Conventional Commits](https://www.conventionalcommits.org/) e il changelog è generato con [git-cliff](https://git-cliff.org).
+"""
+# Corpo del changelog: una sezione per release, raggruppata per tipo di commit.
+# I titoli dei gruppi arrivano dai `commit_parsers` qui sotto (già in italiano).
+body = """
+{% if version %}## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}{% else %}## [Unreleased]{% endif %}
+
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+
+{% for commit in commits %}- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{% if commit.breaking %}[**BREAKING**] {% endif %}{{ commit.message | split(pat="\n") | first | trim }}
+{% endfor %}
+{% endfor %}
+"""
+# Footer: link di compare GitHub tra la release precedente e quella corrente.
+# `remote.github` è popolato dall'env GITHUB_REPO (impostato in release.yml) o
+# dalla sezione [remote.github]; le guardie evitano errori se manca il remote.
+footer = """{% if version %}{% if previous.version %}{% if remote.github %}
+**Full Changelog**: https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}/compare/{{ previous.version }}..{{ version }}
+{% endif %}{% endif %}{% endif %}"""
+# Rimuove spazi bianchi iniziali/finali dal changelog renderizzato.
+trim = true
+
+[git]
+# Abilita l'interpretazione dei messaggi secondo la specifica Conventional Commits.
+conventional_commits = true
+# Esclude i commit che non rispettano la specifica (es. messaggi non prefissati).
+filter_unconventional = true
+# Nessuno split: un commit resta un commit (i messaggi multilinea non vengono divisi).
+split_commits = false
+# Esclude del tutto i merge commit: non portano contenuto informativo nel changelog.
+filter_merge_commits = true
+# Ogni commit deve finire in un gruppo: non scartare quelli non mappati.
+filter_commits = false
+# Mappatura tipo -> gruppo (titoli in italiano). I merge si saltano comunque,
+# per sicurezza anche via regex `^Merge`; i tipi non riconosciuti finiscono in
+# "Altro" grazie al parser catch-all finale.
+commit_parsers = [
+  { message = "^Merge", skip = true },
+  { message = "^feat", group = "Funzionalità" },
+  { message = "^fix", group = "Correzioni" },
+  { message = "^perf", group = "Prestazioni" },
+  { message = "^refactor", group = "Rifattorizzazione" },
+  { message = "^docs", group = "Documentazione" },
+  { message = "^test", group = "Test" },
+  { message = "^build", group = "Build" },
+  { message = "^ci", group = "CI" },
+  { message = "^chore", group = "Manutenzione" },
+  { message = "^revert", group = "Ripristini" },
+  { message = "^style", group = "Stile" },
+  { message = ".*", group = "Altro" },
+]
+# I tag di release sono nella forma `vX.Y.Z`.
+tag_pattern = "v[0-9]*"
+# Ordine dei commit dentro ogni release: dal più vecchio al più recente.
+sort_commits = "oldest"

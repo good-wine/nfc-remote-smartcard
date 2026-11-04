@@ -1,0 +1,73 @@
+[package]
+name = "nfc-desktop"
+version = "0.3.0"
+edition = "2024"
+license.workspace = true
+[lints]
+workspace = true
+
+[lib]
+name = "nfc_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "nfc-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri 2 (2026, risolve all'ultima 2.x: tray + updater firmato + deep-link + store)
+tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
+tauri-plugin-store = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-os = "2"
+tauri-plugin-notification = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+prost = "0.14"
+tokio = { version = "1.47", features = ["full"] }
+axum = { version = "0.8", features = ["ws"] }
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+rcgen = { version = "0.13", features = ["x509-parser"] }
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "prefer-post-quantum", "std", "logging"] }
+rustls-pemfile = "2.1"
+pcsc = { version = "2.8", optional = true }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+tokio-tungstenite = { version = "0.27", features = ["rustls-tls-webpki-roots"] }
+futures-util = "0.3"
+nfc-core = { version = "0.3.0", path = "../../shared-core-rust", features = ["lockfile"] }
+thiserror = "2.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1.18", features = ["v4"] }
+base64 = "0.22"
+hex = "0.4"
+sha2 = "0.10"
+rand = "0.9"
+qrcode = "0.14"
+image = "0.25"
+local-ip-address = "0.6"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+tokio = { version = "1.47", features = ["full", "test-util"] }
+tempfile = "3.10"
+# I test confrontano `/v1/status` con le costanti dichiarate in `nfc-core`:
+# se il JSON copiasse i valori a mano, un cambio di porta passerebbe il test
+# senza che nessuno noti la divergenza.
+nfc-core = { version = "0.3.0", path = "../../shared-core-rust", features = ["pq"] }
+
+[features]
+default = ["pq"]
+# Ibrido post-quantum X25519+ML-KEM-768 (consigliato 2026).
+pq = ["nfc-core/pq"]
+# Lettore fisico PC/SC diretto (serve libpcsclite di sistema).
+physical = ["dep:pcsc"]
+# DataChannel WebRTC (VPN): solo segnalazione senza dipendenze pesanti;
+# il trasporto dati riusa gli stessi EncryptedFrame E2EE.
+webrtc = []

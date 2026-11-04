@@ -1,0 +1,22 @@
+[advisories]
+# RUSTSEC-2025-0134: rustls-pemfile non mantenuto (solo re-export di rustls-pki-types,
+# rischio basso) — arriva via axum-server 0.7; rivalutare a ogni bump di axum-server.
+# RUSTSEC-2024-0436 (paste) e RUSTSEC-2024-0370 (proc-macro-error): macro build-time
+# non mantenute, solo via gtk-rs 0.18 (stack Tauri, non aggiornabili da noi);
+# nessun rischio runtime (non finiscono nel binario se non come proc-macro).
+ignore = ["RUSTSEC-2025-0134", "RUSTSEC-2024-0436", "RUSTSEC-2024-0370"]
+
+[licenses]
+# Allowlist SPDX: tutto ciò che non è qui è rifiutato.
+# MPL-2.0 (copyleft debole a livello di file, es. cssparser via stack Tauri):
+# non infetta il linking, accettabile per Open-Core. Zlib/Unicode-3.0 permissive.
+allow = ["MIT", "Apache-2.0", "ISC", "BSD-3-Clause", "BSD-2-Clause", "Unicode-DFS-2016", "CC0-1.0", "MPL-2.0", "Zlib", "Unicode-3.0", "NCSA", "Apache-2.0 WITH LLVM-exception", "CDLA-Permissive-2.0"]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

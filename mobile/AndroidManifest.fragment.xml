@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Da fondere in mobile/src-tauri/gen/android/app/src/main/AndroidManifest.xml
+     (progetto generato da `tauri android init`; vedi mobile/gen/README.md). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.NFC" />
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+  <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+  <uses-feature android:name="android.hardware.nfc" android:required="true" />
+  <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
+  <application>
+    <activity android:name=".MainActivity" android:exported="true">
+      <intent-filter>
+        <action android:name="android.nfc.action.TECH_DISCOVERED" />
+        <category android:name="android.intent.category.DEFAULT" />
+      </intent-filter>
+      <meta-data android:name="android.nfc.action.TECH_DISCOVERED" android:resource="@xml/nfc_tech_filter" />
+    </activity>
+  </application>
+</manifest>

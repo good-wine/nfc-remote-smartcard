@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NFC Smartcard Remote</title>
+</head>
+<body>
+  <div class="card">
+    <div class="card-head">
+      <h2 data-i18n="pair.title">Accoppia smartphone</h2>
+      <span id="qr-expiry" class="qr-expiry" data-state="ok" hidden></span>
+      <button id="regen" class="ghost" data-i18n="pair.regen">Rigenera QR</button>
+    </div>
+    <img id="qr" alt="QR pairing" />
+    <p class="meta" data-i18n="pair.photoHint">Sul telefono: scanner, inquadra il QR da ~15–20 cm riempiendo quasi tutto il riquadro.</p>
+    <p><code id="qrtext"></code></p>
+    <p id="sas"></p>
+    <p class="meta"><code data-i18n="pair.note">Servizi anche su https://nfc.local:8443 · pairing nfc://pair</code></p>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3 data-i18n="status.title">Stato</h3>
+    </div>
+    <div id="status" aria-live="polite">…</div>
+    <p id="status-meta" class="meta" hidden></p>
+    <div id="log" aria-live="polite" aria-relevant="additions"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3 data-i18n="consent.title">Accessi locali <span id="pending-count" class="count-badge" hidden></span></h3>
+    </div>
+    <p class="meta" data-i18n="consent.notice">Se un client locale chiede di guidare il lettore, arriva qui un banner.</p>
+    <div id="consents"></div>
+    <h4 data-i18n="clients.title">Clienti autorizzati</h4>
+    <div id="clients"></div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

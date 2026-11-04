@@ -1,0 +1,65 @@
+# Configurazione cargo-mutants — letta di default da `.cargo/mutants.toml`
+# nella root del source tree (vedi https://mutants.rs/config-file.html).
+#
+# Scopo: misurare la *forza* delle assert di `nfc-core`, non la copertura.
+# La copertura dice quali righe sono eseguite; cargo-mutants rompe
+# deliberatamente il codice (es. `!=` -> `==`, rimozione di un check APDU/MAC)
+# e verifica che i test *falliscano*. Un mutante che sopravvive è un percorso
+# eseguito ma non verificato: su un crate crypto/protocollo è un bypass
+# silenzioso, esattamente il difetto che in produzione non dà errore.
+
+# ---------------------------------------------------------------------------
+# Selezione del package da mutare
+# ---------------------------------------------------------------------------
+# Nota: NON si usa `test_package`. Il campo esiste nello schema ma è una
+# `Vec<String>`, quindi la forma stringa `test_package = "nfc-core"` verrebbe
+# RIFIUTATA in deserializzazione (il config usa `deny_unknown_fields` + tipo
+# rigido). La selezione del package avviene sulla riga di comando con
+# `-p nfc-core`, e in automatico ogni mutante esegue solo i test del package
+# mutato: è esattamente il comportamento che vogliamo.
+
+# Non si usa `test_workspace = true`: eseguirebbe anche i test di
+# nfc-desktop/mobile a ogni mutante, che richiedono lo stack PKI/PC-SC e
+# allungano il ciclo di ordini di grandezza senza coprire logica di nfc-core.
+# Resta il default (false) = solo i test del package mutato.
+test_workspace = false
+
+# ---------------------------------------------------------------------------
+# Timeout
+# ---------------------------------------------------------------------------
+# ATTENZIONE: `timeout = 120` NON è una chiave valida di questo file.
+# In cargo-mutants 27.1.0 la struct di config è `deny_unknown_fields` e la
+# chiave `timeout` non esiste: il parsing fallirebbe con
+# "unknown field `timeout`" e OGNI comando `cargo mutants` andrebbe in errore.
+# Qui sono disponibili solo moltiplicatori relativi al baseline:
+#   * `timeout_multiplier`       — moltiplica il timeout dei test per ogni mutante
+#   * `minimum_test_timeout`     — pavimento (secondi) sul timeout auto-rilevato
+#   * `build_timeout_multiplier` — idem per la fase di build
+# Il timeout assoluto per singolo `cargo test` resta quindi un flag CLI, ed è
+# quello che la workflow passa: `--timeout 120`. I test crypto di nfc-core sono
+# veloci, 120 s lasciano margine a un handshake ibrido ML-KEM su una CI
+# condivisa senza far pendere il job. Nota di triage: un mutante che va in
+# timeout NON è "caught" — è un esito a sé da rivedere a mano.
+
+# ---------------------------------------------------------------------------
+# Esclusioni
+# ---------------------------------------------------------------------------
+# Si escludono i file che non contengono logica da mutare: test di integrazione,
+# bench, esempi, build script e il crate `fuzz` (escluso dal workspace, ma qui
+# per sicurezza). Mutare questi file produce mutanti non significativi o
+# implementabili solo con compilazioni inutili — rumore che nasconde i
+# sopravvissuti veri.
+exclude_globs = [
+    # Test di integrazione (nessuno oggi in nfc-core, esclusione difensiva).
+    "**/tests/**",
+    # Benchmark e crate di esempio: non fanno parte del binario/logica.
+    "**/benches/**",
+    "**/examples/**",
+    # Build script: genera i tipi protobuf via prost-build, non è logica di
+    # dominio e mutarlo rompe solo la build.
+    "**/build.rs",
+    # Fuzzing target (crate separato, nightly-only): mutarli non ha valore.
+    "fuzz/**",
+    # Glue WASM generato e crate dei test host: non sono superficie di nfc-core.
+    "shared-core-wasm/**",
+]

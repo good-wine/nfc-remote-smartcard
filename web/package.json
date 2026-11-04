@@ -1,0 +1,21 @@
+{
+  "name": "nfc-webapp",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Webapp/PWA unica per desktop e mobile NFC Remote, servita dall'engine su https://nfc.local:8443",
+  "scripts": {
+    "dev": "vite dev --port 5173 --strictPort",
+    "build:wasm": "bash ./scripts/build-wasm.sh",
+    "build": "npm run build:wasm && tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0",
+    "typescript": "^5.9.0",
+    "vite": "^6.3.0"
+  },
+  "dependencies": {
+    "jsqr": "^1.4.0"
+  }
+}

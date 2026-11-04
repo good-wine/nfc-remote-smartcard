@@ -1,0 +1,10 @@
+[toolchain]
+# Pin esatto (non "stable") per lint/build deterministici tra locale e CI;
+# bump esplicito quando si adotta la nuova stable.
+channel = "1.99.0"
+components = ["clippy", "rustfmt", "rust-analyzer"]
+# La build WASM (web) compila nfc-core-wasm: il target viaggia col toolchain
+# pinnato così rustup lo installa insieme al resto.
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"
+# Nota: cargo-deny NON è un componente rustup: `cargo install cargo-deny`.

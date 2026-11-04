@@ -1,0 +1,59 @@
+# — Rust —
+target/
+**/*.rs.bk
+# Workspace member fuzz (nightly-only), mai in CI
+fuzz/target/
+fuzz/corpus/
+fuzz/artifacts/
+
+# Tauri (target coperto sopra; `gen` è generato da tauri dev/build)
+desktop/src-tauri/gen/
+mobile/src-tauri/gen/
+# NB: `mobile/gen/` NON è ignorata: contiene i bridge nativi scritti a mano
+# (NfcBridge.swift / NfcIsoDepHandler.kt) — è sorgente, non codice generato.
+
+# — Node / frontend —
+node_modules/
+dist/
+# Glue generato da `scripts/build-wasm.sh` (wasm-bindgen): si rigenera a build.
+web/src/wasm/
+mobile/dist/
+
+# — Analisi locale (coverage / mutation testing) —
+# Prodotti da `cargo llvm-cov` e `cargo mutants` in locale; in CI sono
+# publishati come artifact, non versionati.
+mutants.out/
+lcov.info
+cobertura.xml
+coverage-summary.txt
+
+# — Log, pid, artefatti di test/script —
+*.log
+.logs/
+.run/
+web/webapp-pair.png
+web/webapp-scanner.png
+.pair.html
+.pair.err
+
+# — Packaging distribuzione —
+*.AppImage
+*.dmg
+*.msi
+*.zip
+desktop/src-tauri/bundle/
+
+# OS
+.DS_Store
+
+# Extension
+browser-extension/dist/
+# Output intermedio di `tsc` (poi bundlato in dist/): si rigenera a build.
+browser-extension/dist-tmp/
+# Artefatti Playwright in caso di test falliti (report/error-context).
+browser-extension/test-results/
+browser-extension/playwright-report/
+
+# Env
+.env
+.env.*

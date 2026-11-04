@@ -1,0 +1,169 @@
+# Dependabot: aggiornamenti automatici delle dipendenze.
+# Perché qui e non solo in CI: cargo-deny/cargo-audit/npm audit intercettano le
+# advisory note, ma non propongono mai l'upgrade. Dependabot chiude il ciclo
+# aprendo PR già revisionabili dalla pipeline (lint/test/scan), così il debito di
+# versione emerge in PR piccole invece che in un "big bang" pre-rilascio.
+#
+# Scelte trasversali:
+# - cadenza `weekly`: su un monorepo con 7 lockfile una cadenza daily genererebbe
+#   troppo rumore e PR sovrapposte.
+# - `groups`: minor + patch in un unico PR per ecosistema/directory; i major
+#   restano PR separate perché richiedono lettura del changelog e test mirati.
+# - `open-pull-requests-limit`: tetto per directory, così un arretrato non satura
+#   la queue di review del team.
+version: 2
+updates:
+  # --- Rust: workspace root ---
+  # Il workspace root ha il Cargo.lock dei crate nfc-core/nfc-desktop/... e il
+  # deny.toml: è la directory di riferimento per le dipendenze dei crate membri.
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - deps
+      - rust
+    groups:
+      # Minor + patch insieme: sono aggiornamenti a basso rischio, la CI
+      # (fmt/test/clippy/cargo-deny) li valida in un solo giro.
+      cargo-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # --- Rust: crate `fuzz` ---
+  # `fuzz/` è un crate nightly-only escluso dal workspace e da ci.yml, ma ha un
+  # proprio Cargo.lock: senza questa entry le sue dipendenze resterebbero
+  # scoperte dagli aggiornamenti (restano comunque coperte dagli audit).
+  - package-ecosystem: cargo
+    directory: "/fuzz"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - deps
+      - rust
+    groups:
+      cargo-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # --- npm: un progetto per sottocartella ---
+  # I 5 sottoprogetti frontend NON formano un npm workspace: ognuno ha il proprio
+  # package-lock.json, quindi Dependabot va puntato su ogni directory o le
+  # dipendenze non viste non verrebbero proposte.
+  - package-ecosystem: npm
+    directory: "/browser-extension"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - deps
+      - npm
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: "/desktop"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - deps
+      - npm
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: "/mobile"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - deps
+      - npm
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: "/shared-ui-ts"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - deps
+      - npm
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: "/web"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - deps
+      - npm
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # --- GitHub Actions ---
+  # Le action pinnate nei workflow sono a loro volta superficie d'attacco
+  # (supply chain): tenerle aggiornate è parte del modello di minaccia, non solo
+  # manutenzione. Directory "/" perché i workflow vivono in .github/workflows.
+  # Solo minor/patch automatici: un major di action è un cambio di contratto e va
+  # gestito a mano con lettura del changelog.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - deps
+      - ci
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
