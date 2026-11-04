@@ -1,0 +1,114 @@
+name: Supply Chain Security
+
+on:
+  # Su push/PR i gate bloccanti stanno in ci.yml (cargo-deny, cargo-audit,
+  # npm audit per sottoprogetto): qui resta la scansione periodica delle
+  # nuove advisory + il dispatch manuale.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+# Un push sulla stessa PR annulla la run precedente: la scansione delle advisory
+# è deterministica e una run superata non aggiunge informazione.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  cargo-deny:
+    name: cargo-deny (advisories + licenses + bans)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-deny
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-deny
+          version: "^0.14"
+          use-cache: true
+
+      - name: Cache cargo-deny
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/deny
+            target/debug/deps/cargo_deny*
+          key: cargo-deny-${{ runner.os }}-${{ hashFiles('deny.toml') }}
+
+      - name: Run cargo deny check
+        run: cargo deny check advisories licenses bans sources
+
+  cargo-audit:
+    name: cargo-audit (vulnerabilities)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cargo-audit
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-audit
+          version: "^0.21"
+          use-cache: true
+
+      - name: Cache cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/advisory-db
+            target/debug/deps/cargo_audit*
+          key: cargo-audit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run cargo audit
+        run: cargo audit --deny warnings --deny unmaintained --deny yanked --deny notice
+
+  npm-audit:
+    name: npm audit (JS deps)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Ogni sottoprogetto è un progetto npm a sé (package-lock.json proprio):
+      # non esiste un workspace/lockfile unico, quindi l'audit gira per
+      # directory.
+      - name: Audit production dependencies
+        run: |
+          set -e
+          for d in browser-extension desktop mobile shared-ui-ts web; do
+            echo "== npm audit: $d =="
+            (cd "$d" && npm audit --omit=dev --audit-level=high)
+          done
+
+  cargo-check:
+    name: cargo check (all targets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            target
+          key: cargo-check-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      # fmt/clippy girano già in ci.yml con gli stessi flag: qui resta solo il
+      # `check --all-targets`, che ci.yml non esegue.
+      - name: Cargo check workspace
+        run: cargo check --workspace --all-targets

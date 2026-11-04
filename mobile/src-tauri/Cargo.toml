@@ -1,0 +1,47 @@
+[package]
+name = "nfc-mobile"
+version = "0.3.0"
+edition = "2024"
+license.workspace = true
+[lints]
+workspace = true
+
+[lib]
+name = "nfc_mobile_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-barcode-scanner = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.47", features = ["full"] }
+nfc-core = { version = "0.3.0", path = "../../shared-core-rust" }
+thiserror = "2.0"
+anyhow = "1.0"
+tracing = "0.1"
+base64 = "0.22"
+hex = "0.4"
+prost = "0.14"
+tokio-tungstenite = { version = "0.27", features = ["rustls-tls-webpki-roots"] }
+futures-util = "0.3"
+# TLS 2026 su entrambe le estremità: provider aws-lc-rs (FIPS-capable) con
+# `prefer-post-quantum`, quindi il gruppo ibrido X25519MLKEM768 è offerto per
+# primo nel key exchange. La feature `tls12` non è richiesta e nel grafo del
+# mobile resta davvero spenta a compile-time (niente reqwest lato mobile);
+# nel grafo del desktop la riattiva reqwest via tauri-plugin-updater, dove la
+# negazione del downgrade è provata a runtime da test con handshake reali.
+# `builder_with_provider` resta esplicito per determinismo.
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "prefer-post-quantum", "std", "logging"] }
+sha2 = "0.10"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dev-dependencies]
+# Test della postura TLS 2026: negoziazione reale, non configurazione a mano.
+rcgen = "0.13"
+
+[features]
+default = ["pq"]
+pq = ["nfc-core/pq"]

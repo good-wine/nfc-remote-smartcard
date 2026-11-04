@@ -1,0 +1,193 @@
+name: lint
+
+# Gate di qualità/sicurezza della *pipeline*, non del prodotto: analizza gli
+# artefatti di automazione versionati nel repo (workflow, script di supporto,
+# storico dei segreti) e il contratto dei commit.
+#
+# Perché un file separato da ci.yml: questi controlli non compilano né testano
+# codice, costano secondi e falliscono per cause ortogonali al codice
+# applicativo (pinning delle action, template injection, refusi, segreti).
+# Un check dedicato rende immediato capire *cosa* è rosso, e lo stesso gate può
+# girare su `push` in main senza ripetere l'intera build.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Minimo privilegio: contenuto in sola lettura per tutti i job. Solo zizmor
+# (upload SARIF in code scanning) e il lint del titolo PR alzano lo scope, e lo
+# fanno a livello di job — non di workflow.
+permissions:
+  contents: read
+
+# Gli analizzatori statici sono deterministici: una run superata dallo stesso
+# push non produce informazione nuova e va annullata (solo sulle PR: su push in
+# main e su dispatch la run resta in coda).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # 1) Sicurezza statica delle GitHub Actions: cerca le classi di difetto che
+  #    nessun compilatore vede — `uses:` non pinnato a SHA, template injection
+  #    da contesto non fidato (`${{ github.event.* }}` interpolato in `run:`),
+  #    credenziali persistite da checkout, trigger pericolosi
+  #    (`pull_request_target`/`workflow_run`), permessi eccessivi.
+  #    È complementare ad actionlint: actionlint verifica che il workflow sia
+  #    *valido*, zizmor che sia *sicuro*.
+  zizmor:
+    name: zizmor (Actions security)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Senza questo scope la action non può pubblicare il SARIF in code
+      # scanning: i finding resterebbero solo nel log della run.
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Nessuno step di analisi deve poter spingere: il token non resta nel
+          # .git della working copy.
+          persist-credentials: false
+
+      # Ref pinnato a SHA: zizmor-action NON pubblica tag di major mobile
+      # (verificati i ref del repo: esistono solo `v0.x.y`, nessun `v0`), quindi
+      # il riferimento stabile è lo SHA del tag, con la versione in commento per
+      # Dependabot. È la stessa policy (hash-pinning) che zizmor applica di
+      # default a tutte le action: applicarla qui evita di nascere con un
+      # finding su se stessi.
+      - name: Run zizmor
+        uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+        # Input scritti espliciti perché sono il contratto di questo gate:
+        # `advanced-security: true` pubblica i finding in code scanning (con
+        # triage persistente) e NON fa fallire la run quando ci sono finding.
+        # Il blocco al merge si ottiene con la "code scanning merge protection"
+        # nel ruleset del branch: un rosso per exit code duplicherebbe il
+        # controllo e sarebbe meno azionabile (nessuna annotazione sulla riga).
+        with:
+          advanced-security: true
+
+  # 2) Validazione sintattica e semantica dei workflow: espressioni `${{ }}`,
+  #    contesti disponibili (`github`, `matrix`, `needs`, `inputs`), label dei
+  #    runner, dipendenze `needs`/`if` incoerenti, e i blocchi `run:` passati a
+  #    shellcheck. È il "compila?" dei workflow: senza, un errore di sintassi si
+  #    scopre solo quando la pipeline serve, tipicamente durante un rilascio.
+  actionlint:
+    name: actionlint (workflow)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      # Scansiona `.github/workflows` di default; shellcheck e pyflakes per i
+      # blocchi script vengono installati dall'action se assenti sul runner.
+      - uses: raven-actions/actionlint@v2
+
+  # 3) ShellCheck sugli script di supporto (installer, avvio locale, packaging,
+  #    guard di sicurezza). Sono il percorso che la persona esegue a mano con
+  #    permessi più ampi di quelli della CI: un quoting sbagliato lì significa
+  #    path cancellati o espansi sulla macchina, non un test rosso.
+  #    `scandir: ./scripts` restringe l'analisi agli script versionati del repo
+  #    (esclude quelli generati o vendor); `severity: warning` è la stessa soglia
+  #    del controllo locale `shellcheck scripts/*.sh`, così "in locale passa" e
+  #    "in CI fallisce" non possono divergere.
+  shellcheck:
+    name: shellcheck (scripts)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      # Pinnata al commit del tag `2.0.0` (nel repo NON esistono tag `v*`).
+      # Un ref mobile (`master`) era supply-chain risk: `shellcheck` gira sui
+      # nostri script, un tag riscritto eseguirebbe codice arbitrario nel CI.
+      - uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
+        with:
+          scandir: ./scripts
+          severity: warning
+
+  # 4) Secret scanning. Un segreto committato è compromesso per sempre: il
+  #    commit successivo che lo rimuove non lo cancella dalla history, quindi il
+  #    remediation è la rotazione e il gate deve stare a monte, non a valle.
+  secrets:
+    name: gitleaks (secret scanning)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Obbligatorio: su un clone shallow gitleaks vedrebbe solo l'ultimo
+          # commit e non i segreti già presenti nello storico che la PR tocca.
+          fetch-depth: 0
+      # v3 e non v2: da v2 il runtime delle action è Node 20, che GitHub ha
+      # rimosso dai runner il 16/09/2026 (v2 non parte più). v3 è lo stesso
+      # contratto, su Node 24.
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Nessun commento automatico sulla PR: richiederebbe
+          # `pull-requests: write` (un permesso di scrittura in un job di sola
+          # analisi) e su PR da fork non sarebbe comunque possibile. L'esito —
+          # e il segreto trovato — restano nella job summary e nel log dello
+          # step, che è ciò che serve per agire.
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
+  # 5) Refusi in codice, workflow e documentazione. Conta perché le stringhe di
+  #    errore e i messaggi utente sono un contratto verso chi legge i log: un
+  #    refuso lì costa una review in più a ogni lettore, per sempre.
+  #    Se il primo run segnala falsi positivi sul testo in italiano, la sede
+  #    della deroga è `_typos.toml` alla radice del repo (extend-words), non
+  #    un'esclusione a mano nei workflow.
+  typos:
+    name: typos (spelling)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      # `v1` (tag di major, verificato esistente) invece di `master`: l'action
+      # stessa avverte che il ref `master` è deprecato e non riceverà più
+      # aggiornamenti.
+      - uses: crate-ci/typos@v1
+
+  # 6) Contratto dei commit. AGENTS.md impone Conventional Commits e release.yml
+  #    li usa per generare il changelog con git-cliff: un tipo inventato non
+  #    rompe nulla in locale, sparisce silenziosamente dal changelog e produce un
+  #    `CHANGES.md` incompleto al rilascio. Si valida il *titolo della PR*, che
+  #    con lo squash-merge diventa il messaggio del commit su main.
+  pr-title:
+    name: PR title (Conventional Commits)
+    runs-on: ubuntu-latest
+    # Su push in main e su dispatch non esiste una PR: il job si salta invece di
+    # fallire.
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      # La action legge titolo e commit della PR con il GITHUB_TOKEN.
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Stessi tipi usati dalla storia del repo, più quelli di Conventional
+          # Commits che compaiono in natura (`ci`, `build`, `style`, `revert`):
+          # rifiutarli obbligherebbe a rinominare PR legittime.
+          types: |
+            feat
+            fix
+            docs
+            refactor
+            test
+            chore
+            ci
+            perf
+            build
+            style
+            revert
+          # Lo scope resta opzionale (es. `ci(lint): ...`), come nei commit del
+          # repo: imporlo produrrebbe scope inventati pur di passare il gate.
+          requireScope: false

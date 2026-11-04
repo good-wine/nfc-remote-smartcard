@@ -1,0 +1,78 @@
+name: Fuzz (nightly)
+
+# Perché è separato da ci.yml: i target libFuzzer richiedono nightly + cargo-fuzz
+# e girano a tempo indeterminato — incompatibili con la pipeline di PR, che deve
+# restare veloce e deterministica. Qui la superficie di parsing più esposta
+# (framing vpcd, wire protocol, QR di pairing) resta sotto fuzz periodico +
+# manuale, così una regressione in un decoder emerge come crash riproducibile
+# con l'input salvato in artifact, non come incidente in produzione.
+on:
+  schedule:
+    # Sabato 04:00: lontano dalle finestre di ci.yml/supply-chain.yml.
+    - cron: '0 4 * * 6'
+  workflow_dispatch:
+    inputs:
+      max_total_time:
+        description: 'Secondi di fuzz per target'
+        required: false
+        default: '300'
+
+# Il fuzz è a tempo indeterminato: due run sovrapposte si contendono la CPU e
+# allungano entrambe. Su schedule/dispatch la nuova run resta in coda (non
+# cancella quella in corso, che ha già prodotto input utili).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Solo lettura: il job non scrive nulla nel repo (gli artifact sono indicizzati
+# e cancellabili).
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      # Un target che crasha non deve nascondere l'esito degli altri.
+      fail-fast: false
+      matrix:
+        target: [vpcd_frame, wire_frame, pairing_qr]
+    steps:
+      - uses: actions/checkout@v5
+
+      # Il crate `fuzz` dipende da nfc-desktop: la sua build richiede protobuf e
+      # lo stack PC/SC (libpcsclite).
+      - name: Dipendenze di sistema
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libpcsclite-dev
+
+      # Il repo pinna 1.99.0 in rust-toolchain.toml; i target libFuzzer girano
+      # solo su nightly, quindi si invoca esplicitamente con `+nightly`.
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-fuzz
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-fuzz
+          use-cache: true
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+
+      - name: Cargo fuzz run ${{ matrix.target }}
+        run: |
+          cargo +nightly fuzz run ${{ matrix.target }} -- \
+            -max_total_time=${{ github.event.inputs.max_total_time || 300 }} \
+            -rss_limit_mb=2048 \
+            -print_final_stats=1
+
+      # Un crash di libFuzzer produce il file d'input che l'ha causato: senza
+      # uploader andrebbe perso e il bug non sarebbe riproducibile dal team.
+      - name: Salva gli input che hanno causato un crash
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+          if-no-files-found: ignore

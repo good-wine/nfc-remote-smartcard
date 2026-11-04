@@ -1,0 +1,120 @@
+name: coverage
+
+# Report di copertura PERIODICO, non un gate.
+#
+# Perché non su push/PR: una soglia arbitraria (es. 80%) fa fallire PR legittime
+# per una metrica che non misura correttezza — spinge a scrivere test inutili
+# solo per alzare la percentuale e rende il segnale rosso "rumore" che si impara
+# a ignorare. La copertura serve come misura di tendenza nel tempo, quindi gira
+# su schedule e su richiesta. I gate bloccanti restano in ci.yml (test, fmt,
+# clippy -D warnings, guard di sicurezza, cargo-deny, audit).
+on:
+  # Domenica 03:17 UTC: la settimana di lavoro è chiusa e non si contendono
+  # runner con le PR.
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+
+# Report periodico: se una run è ancora in corso sullo stesso ref, la seconda
+# non aggiunge informazione (nessun trigger PR qui → `cancel-in-progress` è
+# sempre falso, le run si accodano).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: cargo-llvm-cov (report)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Nightly è il toolchain su cui `-C instrument-coverage` e i componenti
+      # `llvm-tools-preview`/`profdata` sono sempre allineati: su stable il
+      # binario di llvm-cov deve combaciare con la versione di rustc, e questo è
+      # una fonte classica di "profdata version mismatch".
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools-preview
+
+      # Stesse dipendenze di sistema del job `rust` di ci.yml: `protobuf-compiler`
+      # per prost (wire protocol) e `libpcsclite-dev` per la feature `physical`.
+      # Deliberatamente NIENTE webkit/tauri: la coverage misura i test Rust, non
+      # costruisce il bundle desktop.
+      - name: Dipendenze di sistema
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libpcsclite-dev
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Installa cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      # Tre crate e non tutto il workspace: `nfc-core` (crypto/wire/QR),
+      # `nfc-desktop` (server, auth locale, adapter vpcd) e `nfc-core-wasm`
+      # (validazione QR/APDU usata dalla webapp) sono il codice che gira in CI con
+      # `cargo test`. `nfc-mobile` non è testato in CI — builda solo in locale con
+      # gli SDK nativi — quindi includerlo falserebbe la metrica con codice mai
+      # eseguito. `fuzz/` è escluso dal workspace per design.
+      #
+      # `+nightly` esplicito: il repo pinna 1.99.0 in rust-toolchain.toml, che
+      # vince sul default settato dall'action — senza il `+nightly` cargo
+      # risolverebbe il toolchain pinnato, dove `llvm-tools-preview` non è il
+      # componente installato apposta sopra (stessa scelta di fuzz.yml).
+      #
+      # NIENTE `--summary-only` qui: verificato in locale su cargo-llvm-cov
+      # 0.9.1, `--lcov --output-path ... --summary-only` scrive un lcov con i
+      # soli conteggi per file (FNF/FNH/LF/LH, ZERO record `DA:`) e non stampa
+      # nulla a schermo: l'artifact sarebbe inutile per Codecov/lcov consumers.
+      # L'lcov completo è la ragione per cui questo job esiste.
+      - name: Coverage (esegue i test, produce lcov.info)
+        run: |
+          set -o pipefail
+          cargo +nightly llvm-cov \
+            -p nfc-core -p nfc-desktop -p nfc-core-wasm \
+            --all-features \
+            --lcov --output-path lcov.info
+          # Auto-check: un lcov senza righe `DA:` è un summary-only mascherato
+          # (regressione silenziosa, l'artifact verrebbe pubblicato vuoto).
+          grep -q '^DA:' lcov.info || { echo "::error::lcov.info senza record DA (report degradato)"; exit 1; }
+          echo "lcov.info: $(wc -l < lcov.info) righe, $(grep -c '^DA:' lcov.info) record DA"
+
+      # Tabella per-file per la step summary: `report` senza flag la stampa
+      # riusando i profili (profdata) del run precedente, senza ri-eseguire i
+      # test. `--summary-only` non serve: da solo è equivalente a questa tabella,
+      # e insieme a `--lcov --output-path` la sopprime (vedi sopra).
+      - name: Summary per-file (tabella)
+        run: cargo +nightly llvm-cov report 2>&1 | tee coverage-summary.txt
+
+      # Terzo formato senza ricompilare, sempre dal profdata già prodotto:
+      # l'ecosistema attorno alla coverage è eterogeneo (Codecov vuole lcov,
+      # SonarQube/GitLab e i badge XML vogliono Cobertura).
+      - name: Coverage in formato Cobertura
+        run: cargo +nightly llvm-cov report --cobertura --output-path cobertura.xml
+
+      - name: Summary nella step summary della run
+        if: always()
+        run: |
+          {
+            echo '## Coverage (cargo-llvm-cov)'
+            echo ''
+            echo 'Crate misurati: `nfc-core`, `nfc-desktop`, `nfc-core-wasm` (`--all-features`).'
+            echo 'Report **non bloccante**: nessuna soglia, nessun fail di PR su questa metrica.'
+            echo ''
+            echo '```'
+            cat coverage-summary.txt 2>/dev/null || echo '(summary non disponibile)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: |
+            lcov.info
+            cobertura.xml
+            coverage-summary.txt
+          if-no-files-found: warn
+          retention-days: 30

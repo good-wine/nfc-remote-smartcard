@@ -1,0 +1,62 @@
+name: OpenSSF Scorecard
+
+# Perché esiste: cargo-deny/audit e la dependency review coprono le CVE delle
+# dipendenze, ma non la postura del repository (branch protection, pinning delle
+# action, review, token permissions, presenza di SECURITY.md). Scorecard misura
+# quella superficie e la pubblica in modo verificabile dai consumatori
+# open-core: è il complemento agli scan, non una loro duplicazione.
+#
+# Trigger: settimanale (lunedì, dopo il job di supply-chain.yml), a mano, e su
+# ogni push in main così il punteggio resta aggiornato a ogni cambiamento reale.
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Una run superata (stesso workflow, stesso ref) non ha valore: il punteggio va
+# calcolato sullo stato più recente. Su schedule/dispatch resta in coda.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Permessi richiesti dal funzionamento di Scorecard:
+# - security-events: write -> upload del SARIF in code scanning
+# - id-token: write        -> OIDC per pubblicare i risultati su OpenSSF
+# - contents: read         -> checkout
+# - actions: read          -> lettura dei workflow (check di pinning/permessi)
+permissions:
+  security-events: write
+  id-token: write
+  contents: read
+  actions: read
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # `persist-credentials: false` evita che il token resti nel .git della
+          # working copy: l'analisi non deve poter spingere nulla.
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@v2
+        with:
+          # `results_file`/`results_format: sarif` producono il report che il
+          # passo successivo carica in code scanning (visibile nella tab
+          # Security), oltre a `publish_results` per il badge pubblico OpenSSF.
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      # Il SARIF è l'unico formato che la code scanning API accetta: senza
+      # questo upload il punteggio resterebbe visibile solo su OpenSSF e non
+      # come alert/annotazione nel repository.
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif

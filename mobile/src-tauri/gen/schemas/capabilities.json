@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Capacità di default della webview mobile: core + barcode scanner.","local":true,"windows":["main"],"permissions":["core:default","barcode-scanner:default"]}}

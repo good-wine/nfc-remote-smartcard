@@ -1,0 +1,143 @@
+name: ci-2026
+on: [push, pull_request]
+# Minimo privilegio alla radice: i job che hanno bisogno di più alzano lo scope
+# localmente, così l'aumento è visibile nel job che lo usa (vedi `desktop-bundle`
+# e la nota su `rust`).
+permissions: { contents: read }
+# Annulla le run superate dalla stessa PR; su push/tag la run resta in coda
+# (cancellare una build di release già avviata sarebbe peggio del tempo perso).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    # `contents: read` (ereditato) + `checks: write`: `rustsec/audit-check`
+    # pubblica l'esito come check run. Senza quello scope, il giorno in cui
+    # trova davvero un'advisory lo step fallirebbe con "Resource not accessible
+    # by integration" invece di pubblicare il check rosso — cioè il gate
+    # degraderebbe esattamente nel caso in cui deve funzionare. `issues: write`
+    # non serve: l'action apre issue solo sulle run `schedule`, che qui non ci
+    # sono.
+    permissions: { contents: read, checks: write }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: "clippy,rustfmt" }
+      - run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libpcsclite-dev
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo test -p nfc-core --all-features
+      - run: cargo test -p nfc-desktop --all-features
+      # I test host del crate WASM (parse_pairing_qr/validate_apdu) vivono qui:
+      # senza questa riga girano solo nel job web dopo la build del glue, ma è il
+      # crate di validazione del QR che la webapp usa — va testato anche nativo.
+      - run: cargo test -p nfc-core-wasm
+      - run: cargo clippy --workspace --all-features -- -D warnings
+      # Guard di sicurezza 2026: postura TLS13+PQ runtime, invarianti auth del
+      # canale locale, .wasm MIME, validazione QR in WASM. In CI il clippy l'ha
+      # già fatto sopra: lo si salta qui per non raddoppiare i tempi.
+      - run: bash scripts/guard-security-2026.sh
+        env: { SKIP_CLIPPY: "1" }
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with: { command: check }
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+  sbom:
+    runs-on: ubuntu-latest
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: anchore/sbom-action@v0
+        with: { path: ./, format: spdx-json, output-file: sbom.spdx.json }
+      - uses: actions/upload-artifact@v4
+        with: { name: sbom, path: sbom.spdx.json }
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: cd browser-extension && npm ci && npm run lint && npm run build
+      - run: cd browser-extension && npx playwright install chromium --with-deps
+      - run: cd browser-extension && npm run test:e2e
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Target wasm32 + wasm-bindgen-cli pinnato
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install wasm-bindgen-cli --version 0.2.129 --locked
+      - run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      # Il type-check della webapp sta in CI perché il `build` lo esegue:
+      # senza, un errore di tipo nel frontend arriva al device senza segnalazioni.
+      # Il `build` web compila prima il core WASM (build:wasm) e poi Vite.
+      - run: cd web && npm ci && npm run build
+      - name: Core WASM nel browser (senza engine)
+        run: |
+          cd web
+          npx playwright install chromium --with-deps
+          node tests/wasm.core.spec.mjs
+      - run: cd mobile && npm ci && npm run build
+      # I codici di errore di pairing sono un contratto Rust↔TS scritto a mano:
+      # nessun compilatore li collega, quindi una rinomina romperebbe la
+      # traduzione senza dare alcun errore fino al device, e solo nel percorso
+      # d'errore interessato.
+      - run: node scripts/check-pairing-codes.mjs
+  # E2E reale: la webapp servita dall'ENGINE (tauri `--daemon` headless
+  # sotto Xvfb). I test isolati (wasm.core.spec) non mostrano i bug che vivono
+  # solo dove serve il server: il CSP `wasm-unsafe-eval` e il MIME
+  # `application/wasm` li ha scoperti solo `test-webapp.sh` contro l'engine
+  # vero. Se questo job diventa rosso si è codificata una regressione reale.
+  engine-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Target wasm32 + wasm-bindgen-cli pinnato
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo install wasm-bindgen-cli --version 0.2.129 --locked
+      - name: Dipendenze di sistema (build engine + runtime headless)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler libpcsclite-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            patchelf xvfb
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: cd web && npm ci && npm run build
+      - run: cargo build -p nfc-desktop
+      - name: Playwright Chromium per l'e2e
+        run: cd web && npx playwright install chromium --with-deps
+      - name: Webapp contro l'engine reale
+        run: xvfb-run -a bash scripts/test-webapp.sh
+  desktop-bundle:
+    needs: [rust]
+    if: startsWith(github.ref, 'refs/tags/v')
+    # tauri-action crea/aggiorna la Release sul tag e vi allega i bundle firmati:
+    # è l'unico job di ci.yml che scrive nel repository, quindi è anche l'unico
+    # che riceve `contents: write`.
+    permissions: { contents: write }
+    strategy:
+      matrix: { platform: [ubuntu-22.04, windows-latest, macos-14] }
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: tauri-apps/tauri-action@v0
+        # Le due mappe sono state espanse dallo stile inline `{ ... }`: un `${{ }}`
+        # dentro un flow mapping non è YAML valido per un parser strict
+        # (`{` chiude il plain scalar), quindi il file non veniva nemmeno letto da
+        # tooling come actionlint. Stessi valori, identica semantica.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        with:
+          args: -- --target ${{ matrix.platform == 'macos-14' && 'universal-apple-darwin' || '' }}

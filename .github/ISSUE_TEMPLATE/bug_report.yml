@@ -1,0 +1,113 @@
+name: Bug report
+description: Segnala un malfunzionamento riproducibile del prodotto.
+title: "[bug] "
+labels: ["bug"]
+# Le vulnerabilità hanno un canale privato dedicato: vedi config.yml.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie per la segnalazione. Un bug report utile è **riproducibile**: passi
+        esatti, versione, log.
+
+        > ⚠️ **Non incollare segreti.** Rimuovi token, chiavi private, pin TLS,
+        > dati di carte reali, nomi di host interni e identificatori personali.
+        > Sostituiscili con valori fittizi.
+
+        > 🔒 **Vulnerabilità di sicurezza?** Non usare questo modulo: apri un
+        > [Security Advisory privato](https://github.com/nfc-remote/nfc-remote/security/advisories/new)
+        > seguendo [`SECURITY.md`](https://github.com/nfc-remote/nfc-remote/blob/main/SECURITY.md).
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente
+      description: Dove si manifesta il problema?
+      options:
+        - core (crypto/protocollo/pairing — shared-core-rust)
+        - core wasm (validazione QR/APDU nel browser)
+        - desktop (engine, tray, server WS/HTTPS, vpcd)
+        - mobile (app + bridge nativi NFC)
+        - web (webapp/PWA)
+        - extension (browser-extension MV3)
+        - shared-ui-ts (tipi/client condivisi)
+        - script/build/CI (non un componente runtime)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versione o commit
+      description: Tag della release (es. `v0.3.0`) oppure output di `git rev-parse HEAD`.
+      placeholder: "v0.3.0 / <sha>"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Sistema operativo e runtime
+      description: Sistema del PC, versione dell'app mobile e del browser/estensione, se pertinenti.
+      placeholder: "Linux 6.x (Ubuntu 24.04) — Rust 1.99 — Android 15 — Chromium 130 — Estensione v0.3.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passi di riproduzione
+      description: Passi numerati e minimi, dal `git clone` (o dall'avvio dell'app) fino al problema.
+      placeholder: |
+        1. Avvia l'engine con `cargo run -p nfc-desktop -- --daemon`
+        2. Apri la webapp su `http://localhost:8080/app`
+        3. Genera il QR e scansionalo dal mobile
+        4. Il problema appare al passo 3 con ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento atteso
+      description: Cosa ti aspettavi che succedesse, e perché.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportamento attuale
+      description: Cosa succede davvero. Se c'è un messaggio d'errore o un codice di chiusura (es. `4406`, `4401`), riportalo esattamente.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log rilevanti
+      description: |
+        Solo le righe pertinenti (log engine, console del browser, adb logcat).
+        **Redigi i segreti**: niente token, nonce, chiavi, MAC o identificatori
+        della carta.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Contesto aggiuntivo
+      description: Screenshot, frequenza del problema (sempre/intermittente), eventuali workaround, ultima versione in cui funzionava.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Conferme
+      options:
+        - label: Ho rimosso segreti, token e dati personali da testo, log e screenshot.
+          required: true
+        - label: Ho verificato che non esista già una issue aperta sullo stesso problema.
+          required: true

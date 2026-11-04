@@ -1,0 +1,38 @@
+name: Dependency Review
+
+# Perché esiste (e perché non duplica ci.yml): cargo-deny/npm audit/cargo-audit
+# guardano lo stato dell'albero dopo il merge. La dependency review confronta il
+# diff del lockfile della PR e blocca l'introduzione di una dipendenza
+# vulnerabile PRIMA che entri in main — è il gate "shift-left" della supply chain.
+on:
+  pull_request:
+
+# Il diff del lockfile di una PR non ha senso validarlo su una revisione già
+# superata: la concurrency qui cancella davvero (è l'unico trigger).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Permessi minimi: serve solo leggere i contenuti del repo e scrivere il commento
+# riepilogativo sulla PR (il commento è ciò che rende azionabile un blocco).
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    name: Dependency review (gate PR)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # `fail-on-severity: high` allinea la soglia al resto del repo, che blocca
+      # già high/critical (npm audit --audit-level=high, cargo-deny advisories):
+      # un livello più permissivo qui creerebbe un buco incoerente in CI.
+      # `comment-summary-in-pr` pubblica l'esito sulla PR così il motivo del
+      # blocco è visibile a chi ha aperto il cambiamento, senza aprire i log.
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: always

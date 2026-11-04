@@ -1,0 +1,48 @@
+[package]
+name = "nfc-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.nfc-desktop]
+path = "../desktop/src-tauri"
+
+[dependencies.nfc-core]
+path = "../shared-core-rust"
+
+[[bin]]
+name = "vpcd_frame"
+path = "fuzz_targets/vpcd_frame.rs"
+test = false
+bench = false
+doc = false
+
+[[bin]]
+name = "wire_frame"
+path = "fuzz_targets/wire_frame.rs"
+test = false
+bench = false
+doc = false
+
+[[bin]]
+name = "pairing_qr"
+path = "fuzz_targets/pairing_qr.rs"
+test = false
+bench = false
+doc = false
+
+# Opt-in: richiede nightly + cargo-fuzz. NON fa parte del workspace principale.
+#   cargo install cargo-fuzz
+#   cargo +nightly fuzz run vpcd_frame   -- -max_total_time=120   # framing vpcd (len||cmd||payload)
+#   cargo +nightly fuzz run wire_frame   -- -max_total_time=120   # wire protocol (EncryptedFrame/PlainFrame)
+#   cargo +nightly fuzz run pairing_qr   -- -max_total_time=120   # QR di pairing (v1/v2)
+# dalla root del repo.
+# Nota: fuzz/Cargo.lock segue quello del workspace (versioni già testate).

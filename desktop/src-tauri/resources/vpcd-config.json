@@ -1,0 +1,3 @@
+{
+  "resources": { "vpcd-config.json": { "host": "127.0.0.1", "port": 35963, "autostart": true } }
+}

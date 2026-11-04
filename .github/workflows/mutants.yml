@@ -1,0 +1,110 @@
+name: mutants
+
+# Mutation testing: la copertura risponde a "quali righe sono eseguite?", non a
+# "le assert sono abbastanza forti da uccidere un difetto?". Su `nfc-core`
+# (crypto ibrida, wire protocol, APDU, pairing QR) un confronto indebolito è un
+# bypass silenzioso: i mutanti sopravvissuti sono esattamente i punti dove una
+# regressione passerebbe la suite senza dare errore. Gira fuori dalla pipeline
+# di PR perché è lento (una suite completa per ogni mutante).
+on:
+  schedule:
+    # Sabato 05:00 UTC: dopo il fuzz (04:00), lontano dalle finestre di ci.yml.
+    - cron: '0 5 * * 6'
+  workflow_dispatch:
+
+# Il mutation testing tiene il runner occupato fino a 120 minuti: due run
+# sovrapposte non aggiungono informazione e si rallentano a vicenda (nessun
+# trigger PR → `cancel-in-progress` sempre falso, le run si accodano).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Solo lettura: il job non scrive nel repo, gli artifact sono indicizzati.
+permissions:
+  contents: read
+
+jobs:
+  mutants:
+    name: cargo-mutants (nfc-core)
+    runs-on: ubuntu-latest
+    # NON bloccante di proposito: i mutanti sopravvissuti sono un *finding* da
+    # triage (assert da rafforzare o esclusione motivata nel config), non un
+    # gate. Renderlo rosso subito trasformerebbe tutti i finding in rumore
+    # ignorato. Quando il baseline sarà pulito lo si potrà rendere bloccante.
+    continue-on-error: true
+    # Guardia dura contro un mutante che appende la suite (il timeout per-test
+    # è 120 s, ma un hang di build non è coperto da quello).
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      # La build di nfc-core (e dei crate che ne dipendono) richiede protobuf
+      # per prost-build e lo stack PC/SC (libpcsclite).
+      - name: Dipendenze di sistema
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler libpcsclite-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # La cache copre anche la build baseline + le build dei mutanti, che
+      # sarebbero altrimenti il costo dominante della run.
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-mutants
+        uses: taiki-e/install-action@cargo-mutants
+
+      # `--no-shuffle` = ordine deterministico dei mutanti tra le run, così tra
+      # due schedule si confrontano gli stessi finding. `--all-features` copre
+      # anche i percorsi pq/aead-chacha (i più critici dal punto di vista crypto);
+      # la config in `.cargo/mutants.toml` esclude test/bench/build.rs/fuzz e
+      # imposta il timeout.
+      - name: Mutation testing di nfc-core
+        run: cargo mutants -p nfc-core --all-features --no-shuffle --timeout 120
+
+      # `if: always()` perché l'output serve soprattutto quando la run fallisce
+      # (mutanti sopravvissuti): senza uploader quei dati sparirebbero.
+      - name: Salva mutants.out/
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutants-out
+          path: mutants.out/
+          if-no-files-found: ignore
+
+      # La summary nel run è ciò che il team legge davvero: il triage dei
+      # sopravvissuti non deve richiedere il download dell'artifact.
+      - name: Summary mutanti
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -d mutants.out ]; then
+            echo "### Mutation testing nfc-core" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Nessun output in \`mutants.out/\` (job interrotto prima dell'esecuzione)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "### Mutation testing nfc-core" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          # Conteggio per esito dai file summary di cargo-mutants. I nomi
+          # cambiano tra versioni, quindi si contano solo quelli presenti.
+          for f in caught missed timeout unviable; do
+            if [ -f "mutants.out/$f.txt" ]; then
+              n=$(grep -c . "mutants.out/$f.txt" || true)
+              echo "- \`$f\`: $n" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+          # Elenco (troncato) dei sopravvissuti: è la parte azionabile.
+          if [ -s mutants.out/missed.txt ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "<details><summary>Sopravvissuti (primi 50)</summary>" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            head -50 mutants.out/missed.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f mutants.out/mutants.json ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Mutanti generati (da \`mutants.json\`): $(python3 -c 'import json,sys; print(len(json.load(open("mutants.out/mutants.json"))))' || echo "n/d")" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact completo: \`mutants-out\` (inclusi \`mutants.out/log/\`)." >> "$GITHUB_STEP_SUMMARY"

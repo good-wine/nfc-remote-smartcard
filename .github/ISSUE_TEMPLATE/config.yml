@@ -1,0 +1,19 @@
+# Configurazione del selettore di issue.
+#
+# `blank_issues_enabled: false`: costringe a passare da un template, così una
+# segnalazione arriva già con le informazioni minime per essere riprodotta —
+# e le vulnerabilità non finiscono per errore in una issue pubblica.
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Segnala una vulnerabilità (privato)
+    url: https://github.com/nfc-remote/nfc-remote/security/advisories/new
+    about: "Canale privato per problemi di sicurezza. NON aprire una issue pubblica: leggi prima SECURITY.md."
+  - name: Domande e discussione
+    url: https://github.com/nfc-remote/nfc-remote/discussions
+    about: Per domande d'uso, dubbi di configurazione e confronto di idee che non sono bug o richieste precise.
+  - name: Documentazione
+    url: https://github.com/nfc-remote/nfc-remote/blob/main/README.md
+    about: Setup, comandi di build/test e mappa dei componenti del monorepo.
+  - name: Contribuire
+    url: https://github.com/nfc-remote/nfc-remote/blob/main/CONTRIBUTING.md
+    about: Prerequisiti, workflow Git, test e requisiti delle pull request.

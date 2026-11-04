@@ -1,0 +1,6 @@
+{
+  "identifier": "default",
+  "description": "Capacità di default della webview mobile: core + barcode scanner.",
+  "windows": ["main"],
+  "permissions": ["core:default", "barcode-scanner:default"]
+}

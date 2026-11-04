@@ -1,0 +1,223 @@
+/* Popup estensione: scuro, coi token della webapp. 320px di larghezza. */
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0d12;
+  --card: #151923;
+  --line: #262c3a;
+  --fg: #e8ecf4;
+  --muted: #98a2b8;
+  --accent: #4c8dff;
+  --ok: #35c68a;
+  --warn: #ffb020;
+  --err: #ff5c5c;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  font: 13px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  padding: 12px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0;
+}
+
+h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 14px 0 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+section {
+  margin-bottom: 4px;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.badge.ok {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  background: color-mix(in srgb, var(--ok) 8%, transparent);
+}
+
+.badge.ko {
+  color: var(--err);
+  border-color: color-mix(in srgb, var(--err) 45%, transparent);
+  background: color-mix(in srgb, var(--err) 8%, transparent);
+}
+
+.badge.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.row .label {
+  color: var(--muted);
+  min-width: 44px;
+}
+
+.row .value {
+  color: var(--fg);
+  word-break: break-word;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+button,
+input {
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: #1b2130;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 11px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: #3a445c;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button#test-select {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04122e;
+  font-weight: 600;
+  flex: 1;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+}
+
+.origin-add {
+  margin: 4px 0;
+}
+
+.origin-add button {
+  padding: 7px 12px;
+  font-weight: 700;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--err);
+  margin: 4px 0 0;
+}
+
+.hint[hidden] {
+  display: none;
+}
+
+ul {
+  margin: 6px 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 4px 0;
+  word-break: break-all;
+}
+
+li button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  padding: 2px 6px;
+  flex: none;
+}
+
+li button:hover {
+  color: var(--err);
+}
+
+pre {
+  background: #0e111a;
+  border: 1px solid var(--line);
+  color: #9fe8b3;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  padding: 8px;
+  border-radius: 8px;
+  max-height: 140px;
+  overflow: auto;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+pre.ok {
+  color: var(--ok);
+}
+
+pre.ko {
+  color: var(--err);
+}

@@ -1,0 +1,99 @@
+name: release-2026
+
+# Rilascio automatizzato con changelog e attestazione della supply-chain.
+#
+# Perché è separato da ci.yml: ci.yml, sul tag `v*`, costruisce e firma i bundle
+# Tauri (job `desktop-bundle` con tauri-action). Qui NON si ricostruisce nulla:
+# si aggiungono changelog, SBOM e attestazioni, legando alla release il codice
+# sorgente esatto del tag. Nessuna duplicazione di build.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# L'espressione di `cancel-in-progress` è sempre falsa qui (questo workflow non
+# ha il trigger `pull_request`), quindi le run si accodano invece di cancellarsi:
+# un rilascio interrotto a metà (changelog creato, attestazioni mancanti)
+# lascerebbe la Release in stato incoerente. La concurrency serve a serializzare
+# i `workflow_dispatch` concorrenti sullo stesso tag.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Permessi minimi, tutti necessari:
+# - contents: write           -> creare la Release e allegare gli asset
+# - id-token: write           -> OIDC keyless per le attestazioni (nessun segreto)
+# - attestations: write       -> scrivere le attestazioni nell'attestation store
+# - artifact-metadata: write  -> metadati dell'artefatto attestato
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+jobs:
+  release:
+    name: Changelog, SBOM e attestazioni
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 -> git-cliff deve vedere tutto lo storico e i tag per
+      # calcolare il range `previous..latest` del link compare.
+      - name: Checkout (storico completo)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # a) Changelog dai Conventional Commits, solo l'ultima release.
+      #    `--strip header` tiene il corpo del release pulito (l'header resta nel
+      #    file completo); GITHUB_REPO alimenta i link compare/commit del template.
+      - name: Genera changelog (git-cliff)
+        id: cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: CHANGES.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      # b) SBOM in SPDX JSON, generato con Syft sulle sorgenti/dipendenze del repo.
+      - name: Genera SBOM (Syft, SPDX JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          path: ./
+          format: spdx-json
+          output-file: sbom.spdx.json
+          # L'upload di default punterebbe a una release non ancora creata (la
+          # creiamo noi allo step successivo): l'allegato lo aggiunge `files` di
+          # softprops/action-gh-release.
+          upload-release-assets: false
+
+      # c) Archivio immutabile delle sorgenti del tag: è il "subject" delle
+      #    attestazioni, così la provenienza lega il codice esatto della release
+      #    (i bundle Tauri sono già firmati a parte da ci.yml/tauri-action).
+      - name: Crea archivio sorgenti del tag
+        run: git archive --format=tar.gz -o nfc-src-${{ github.ref_name }}.tar.gz HEAD
+
+      # d) GitHub Release: changelog come corpo, SBOM e sorgenti allegati.
+      - name: Pubblica la Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGES.md
+          files: |
+            sbom.spdx.json
+            nfc-src-*.tar.gz
+
+      # e) Attestazione di PROVENIENZA (mode provenance): senza `sbom-path`
+      #    `actions/attest` firma la build provenance del subject. Si usa SOLO
+      #    actions/attest@v4: attest-build-provenance e attest-sbom sono deprecate.
+      - name: Attesta la provenienza (provenance)
+        uses: actions/attest@v4
+        with:
+          subject-path: nfc-src-${{ github.ref_name }}.tar.gz
+
+      # f) Attestazione di SBOM: lega sbom.spdx.json al medesimo subject.
+      - name: Attesta l'SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: nfc-src-${{ github.ref_name }}.tar.gz
+          sbom-path: sbom.spdx.json

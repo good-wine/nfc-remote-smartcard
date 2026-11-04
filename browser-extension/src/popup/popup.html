@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="./popup.css" />
+</head>
+<body>
+  <header class="head">
+    <h1 data-i18n="app.title">NFC Remote</h1>
+    <div id="conn" class="badge">…</div>
+  </header>
+
+  <section>
+    <div class="row">
+      <span class="label" data-i18n="card.label">Carta</span>
+      <span id="card" class="value" data-i18n="card.unknown">sconosciuta</span>
+    </div>
+    <div id="consent" class="badge" style="display:none" aria-live="polite"></div>
+    <div class="row">
+      <button id="test-select" data-i18n="test.btn">Test SELECT CIE</button>
+    </div>
+    <div class="row">
+      <label class="check">
+        <input type="checkbox" id="reqhttps" />
+        <span data-i18n="reqhttps.label">Richiedi HTTPS (niente fallback)</span>
+      </label>
+    </div>
+    <pre id="out" aria-live="polite"></pre>
+  </section>
+
+  <section>
+    <h2 data-i18n="origins.title">Origini autorizzate</h2>
+    <div class="row origin-add">
+      <input id="origin" placeholder="https://..." spellcheck="false" autocomplete="off" />
+      <button id="add" title="Aggiungi origine">+</button>
+    </div>
+    <p id="origin-hint" class="hint" hidden></p>
+    <ul id="origins"></ul>
+  </section>
+
+  <section>
+    <h2 data-i18n="log.title">Log</h2>
+    <pre id="log" aria-live="polite"></pre>
+  </section>
+
+  <script type="module" src="./popup.js"></script>
+</body>
+</html>

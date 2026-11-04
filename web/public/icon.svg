@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NFC Remote">
+  <rect width="512" height="512" rx="96" fill="#0b0d12"/>
+  <g fill="none" stroke="#4c8dff" stroke-width="26" stroke-linecap="round">
+    <path d="M150 150h-40a26 26 0 0 0-26 26v40"/>
+    <path d="M150 362h-40a26 26 0 0 1-26-26v-40"/>
+    <path d="M362 150h40a26 26 0 0 1 26 26v40"/>
+    <path d="M362 362h40a26 26 0 0 0 26-26v-40"/>
+  </g>
+  <g stroke="#35c68a" stroke-width="22" stroke-linecap="round">
+    <path d="M196 224a68 68 0 0 1 0 64"/>
+    <path d="M240 200a108 108 0 0 1 0 112"/>
+  </g>
+  <circle cx="316" cy="256" r="18" fill="#e8ecf4"/>
+</svg>

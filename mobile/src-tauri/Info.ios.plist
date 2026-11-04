@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Chiavi iOS unite da Tauri all'Info.plist del target: Tauri cerca
+     automaticamente `Info.ios.plist` accanto a tauri.conf.json. Niente edit a
+     mano del plist generato in src-tauri/gen/apple/. Vedi mobile/gen/README.md. -->
+<plist version="1.0">
+<dict>
+  <key>NFCReaderUsageDescription</key>
+  <string>Legge CIE/CNS via NFC per firma e login sul PC associato.</string>
+  <key>NSCameraUsageDescription</key>
+  <string>Scansiona il QR di accoppiamento col PC.</string>
+  <key>com.apple.developer.nfc.readersession.formats</key>
+  <array><string>TAG</string></array>
+  <key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+  <array>
+    <string>A0000002471001</string>
+    <string>A0000002472001</string>
+    <string>A00000045645444</string>
+  </array>
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
+</dict>
+</plist>
