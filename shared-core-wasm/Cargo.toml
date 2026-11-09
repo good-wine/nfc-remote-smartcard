@@ -25,5 +25,5 @@ hex = "0.4"
 serde_json = "1"
 # Backend CSPRNG per wasm32-unknown-unknown: senza, `getrandom` non compila.
 # I due major coesistono perché `nfc-core` punta a 0.3 e `ml-kem` a 0.4.
-getrandom = { version = "0.3", features = ["wasm_js"] }
+getrandom = { version = "0.4", features = ["wasm_js"] }
 getrandom04 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
