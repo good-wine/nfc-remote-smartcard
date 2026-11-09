@@ -64,7 +64,7 @@ jobs:
       # (mutanti sopravvissuti): senza uploader quei dati sparirebbero.
       - name: Salva mutants.out/
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mutants-out
           path: mutants.out/

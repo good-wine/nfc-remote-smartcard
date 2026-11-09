@@ -71,7 +71,7 @@ jobs:
       # uploader andrebbe perso e il bug non sarebbe riproducibile dal team.
       - name: Salva gli input che hanno causato un crash
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-artifacts-${{ matrix.target }}
           path: fuzz/artifacts/${{ matrix.target }}/
