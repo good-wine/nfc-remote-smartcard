@@ -131,7 +131,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v5
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         # Le due mappe sono state espanse dallo stile inline `{ ... }`: un `${{ }}`
         # dentro un flow mapping non è YAML valido per un parser strict
         # (`{` chiude il plain scalar), quindi il file non veniva nemmeno letto da
