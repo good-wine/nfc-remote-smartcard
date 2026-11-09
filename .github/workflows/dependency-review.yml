@@ -32,7 +32,7 @@ jobs:
       # `comment-summary-in-pr` pubblica l'esito sulla PR così il motivo del
       # blocco è visibile a chi ha aperto il cambiamento, senza aprire i log.
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
           comment-summary-in-pr: always
