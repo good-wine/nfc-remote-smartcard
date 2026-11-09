@@ -24,7 +24,7 @@ jobs:
     name: Dependency review (gate PR)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # `fail-on-severity: high` allinea la soglia al resto del repo, che blocca
       # già high/critical (npm audit --audit-level=high, cargo-deny advisories):

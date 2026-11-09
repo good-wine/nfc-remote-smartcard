@@ -23,7 +23,7 @@ jobs:
     name: cargo-deny (advisories + licenses + bans)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install cargo-deny
         uses: baptiste0928/cargo-install@v3
@@ -47,7 +47,7 @@ jobs:
     name: cargo-audit (vulnerabilities)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install cargo-audit
         uses: baptiste0928/cargo-install@v3
@@ -71,7 +71,7 @@ jobs:
     name: npm audit (JS deps)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -93,7 +93,7 @@ jobs:
     name: cargo check (all targets)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
