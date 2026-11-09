@@ -37,7 +37,7 @@ base64 = "0.22"
 hex = "0.4"
 getrandom = "0.3"
 # Opzionali: vedi `[features] net` sotto — non compilano su wasm32.
-mdns-sd = { version = "0.14", optional = true }
+mdns-sd = { version = "0.21", optional = true }
 thiserror = "2.0"
 anyhow = "1.0"
 zeroize = { version = "1.8", features = ["zeroize_derive"] }
