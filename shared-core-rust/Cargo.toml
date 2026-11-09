@@ -31,7 +31,7 @@ sha2 = "0.10"
 # `getrandom 0.2`, che **non compila** su `wasm32-unknown-unknown` senza
 # wasm-bindgen. Qui non serve: `SessionKeys` usa chiavi statiche (`Key::from_slice`)
 # e mai `Aes256Gcm::generate_key`. La feature è quindi un costo su ogni target.
-aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc", "std"] }
+aes-gcm = { version = "0.11", default-features = false, features = ["aes", "alloc", "std"] }
 chacha20poly1305 = { version = "0.10", optional = true }
 base64 = "0.22"
 hex = "0.4"
