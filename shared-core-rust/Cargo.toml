@@ -25,7 +25,7 @@ prost = "0.14"
 # ML-KEM è opzionale (feature `pq`) per build leggere senza PQC.
 x25519-dalek = { version = "2.0", features = ["static_secrets"] }
 ml-kem = { version = "0.3", features = ["getrandom"], optional = true }
-hkdf = "0.12"
+hkdf = "0.13"
 sha2 = "0.10"
 # `default-features = false`: la feature `getrandom` di aes-gcm trae `rand_core` +
 # `getrandom 0.2`, che **non compila** su `wasm32-unknown-unknown` senza
