@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": { "dev": "vite dev --port 1421 --strictPort", "build": "tsc -p tsconfig.json && vite build" },
-  "dependencies": { "@tauri-apps/api": "^2", "@tauri-apps/plugin-barcode-scanner": "^2.0.0" },
+  "dependencies": { "@tauri-apps/api": "^2", "@tauri-apps/plugin-barcode-scanner": "^2.5.3" },
   "devDependencies": { "@tauri-apps/cli": "^2", "vite": "^6.3.0", "typescript": "^5.9.0" }
 }
