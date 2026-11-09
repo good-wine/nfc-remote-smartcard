@@ -45,7 +45,7 @@ jobs:
       # scanning: i finding resterebbero solo nel log della run.
       security-events: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # Nessuno step di analisi deve poter spingere: il token non resta nel
           # .git della working copy.
@@ -79,7 +79,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # Scansiona `.github/workflows` di default; shellcheck e pyflakes per i
       # blocchi script vengono installati dall'action se assenti sul runner.
       - uses: raven-actions/actionlint@v2
@@ -98,7 +98,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # Pinnata al commit del tag `2.0.0` (nel repo NON esistono tag `v*`).
       # Un ref mobile (`master`) era supply-chain risk: `shellcheck` gira sui
       # nostri script, un tag riscritto eseguirebbe codice arbitrario nel CI.
@@ -116,7 +116,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # Obbligatorio: su un clone shallow gitleaks vedrebbe solo l'ultimo
           # commit e non i segreti già presenti nello storico che la PR tocca.
@@ -147,7 +147,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # `v1` (tag di major, verificato esistente) invece di `master`: l'action
       # stessa avverte che il ref `master` è deprecato e non riceverà più
       # aggiornamenti.

@@ -36,7 +36,7 @@ jobs:
     # è 120 s, ma un hang di build non è coperto da quello).
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # La build di nfc-core (e dei crate che ne dipendono) richiede protobuf
       # per prost-build e lo stack PC/SC (libpcsclite).

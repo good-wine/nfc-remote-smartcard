@@ -30,7 +30,7 @@ jobs:
     name: cargo-llvm-cov (report)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Nightly è il toolchain su cui `-C instrument-coverage` e i componenti
       # `llvm-tools-preview`/`profdata` sono sempre allineati: su stable il

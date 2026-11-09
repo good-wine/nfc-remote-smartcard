@@ -39,7 +39,7 @@ jobs:
       matrix:
         target: [vpcd_frame, wire_frame, pairing_qr]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Il crate `fuzz` dipende da nfc-desktop: la sua build richiede protobuf e
       # lo stack PC/SC (libpcsclite).
